@@ -167,7 +167,7 @@ const main = async () => {
 
   // Sleep until 30 photos are loaded
   while (photoTextures.length < 30) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 
   // Remove loading screen
