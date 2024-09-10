@@ -70,10 +70,11 @@ const loadPhotoTextures = async () => {
   }
 };
 
-const spawnPhotos = () => {
+const spawnPhotos = async () => {
+  // TODO: load asynchronously
   while (scene.children.length < 1 || scene.children.every((child) => child.position.z > camera.position.z - minCameraDistance - visiblePhotosDistance)) {
     const photoId = getRandomPhotoId();
-    spawnNewPhoto(photoId);
+    await spawnNewPhoto(photoId);
   }
 
   //Remove photos that are behind the camera
@@ -91,11 +92,11 @@ const getRandomPhotoId = () => {
   );
   // Remove currently visible ids
   const availableIds = photoIds.filter(
-    (id) => !currentlyVisibleIds.includes(id) && photoTextures[id - minImageId]
+    (id) => !currentlyVisibleIds.includes(id)
   );
 
   // Return a random id
-  return availableIds[Math.floor(Math.random() * availableIds.length)];
+  return availableIds[Math.floor(Math.random() * (availableIds.length - 1)) + 1];
 };
 
 const getGridBasedPosition = (gridIndex) => {
@@ -113,7 +114,20 @@ const getGridBasedPosition = (gridIndex) => {
   return { x, y };
 };
 
-const spawnNewPhoto = (id) => {
+const spawnNewPhoto = async (id) => {
+  console.log("Spawning new photo", id);
+  const photoIndex = id - minImageId;
+
+  if (!photoTextures[photoIndex]) {
+    const url = `${s3BaseUrl}${photoIndex}.webp`;
+    console.log("Loading photo", url);
+    const photoTexture = await new Promise((resolve, reject) => {
+      textureLoader.load(url, resolve, undefined, reject);
+    });
+    photoTextures[photoIndex] = photoTexture;
+    console.log("Loaded photo", i);
+  }
+
   const photoTexture = photoTextures[id - minImageId];
   const photoMaterial = new THREE.MeshBasicMaterial({ map: photoTexture });
   const photoHeight = (photoTexture.image.height / photoTexture.image.width) * photoWidth;
@@ -163,16 +177,6 @@ const animate = function () {
 const main = async () => {
   setup();
 
-  loadPhotoTextures();
-
-  // Sleep until 30 photos are loaded
-  while (photoTextures.length < 30) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  // Remove loading screen
-  document.getElementById("loading").
-    style.display = "none";
   animate();
 };
 
