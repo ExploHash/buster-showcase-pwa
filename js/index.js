@@ -49,6 +49,70 @@ const setup = () => {
 
   // Add a resize event listener
   window.addEventListener("resize", resize);
+
+  // Add on load event listener
+  window.addEventListener("load", onLoad);
+};
+
+const onLoad = () => {
+  // Add a click event listener
+  document.getElementById("threejs-canvas").addEventListener("click", onClick);
+
+  // Add mouse move event listener
+  document
+    .getElementById("threejs-canvas")
+    .addEventListener("mousemove", onMouseMove);
+
+  // Set up the dialog
+  const dialogOverlay = document.getElementById("dialogOverlay");
+  const closeDialog = document.getElementById("closeDialog");
+
+  closeDialog.addEventListener("click", () => {
+    dialogOverlay.classList.remove("active");
+    document.getElementById("dialogImage").src = "";
+  });
+};
+
+// Find the mesh that was clicked
+const getIntersectsFromEvent = (event) => {
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  return raycaster.intersectObjects(scene.children);
+};
+
+const onClick = (event) => {
+  // Find the photo that was clicked
+  const intersects = getIntersectsFromEvent(event);
+
+  // If a photo was clicked, log the id
+  const dialogOverlay = document.getElementById("dialogOverlay");
+  if (intersects.length > 0) {
+    // Get array texture index from photo id
+    const photoId = intersects[0].object.userData.id;
+
+    // Get the texture from the array
+    const texture = photoTextures[photoId - minImageId];
+    dialogOverlay.classList.add("active");
+
+    // Set the image source to the texture name which is the actual photo id
+    document.getElementById("dialogImage").src =
+      `${s3BaseUrl}${texture.name}.webp`;
+  }
+};
+
+const onMouseMove = (event) => {
+  // Find the photo that was hovered
+  const intersects = getIntersectsFromEvent(event);
+
+  // If a photo was hovered, change the cursor
+  if (intersects.length > 0) {
+    document.getElementById("threejs-canvas").style.cursor = "pointer";
+  } else {
+    document.getElementById("threejs-canvas").style.cursor = "default";
+  }
 };
 
 const resize = () => {
@@ -77,6 +141,8 @@ const loadSinglePhotoTexture = async (id) => {
   const photoTexture = await new Promise((resolve, reject) => {
     textureLoader.load(url, resolve, undefined, reject);
   });
+
+  photoTexture.name = id;
   photoTextures.push(photoTexture);
   console.log("Loaded photo", id);
 };
