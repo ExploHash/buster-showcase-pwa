@@ -32,9 +32,9 @@ const setup = () => {
     75,
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    1000,
   );
-  camera.position.z = 1;  // Adjusted initial camera position
+  camera.position.z = 1; // Adjusted initial camera position
 
   // Setup the renderer
   renderer = new THREE.WebGLRenderer({
@@ -60,38 +60,60 @@ const resize = () => {
 };
 
 const loadPhotoTextures = async () => {
+  const promises = [];
   for (let i = minImageId; i <= maxImageId; i++) {
-    const url = `${s3BaseUrl}${i}.webp`;
-    const photoTexture = await new Promise((resolve, reject) => {
-      textureLoader.load(url, resolve, undefined, reject);
-    });
-    photoTextures.push(photoTexture);
-    console.log("Loaded photo", i);
+    promises.push(loadSinglePhotoTexture(i));
+  }
+
+  try {
+    await Promise.all(promises);
+  } catch (e) {
+    console.error(e);
   }
 };
 
+const loadSinglePhotoTexture = async (id) => {
+  const url = `${s3BaseUrl}${id}.webp`;
+  const photoTexture = await new Promise((resolve, reject) => {
+    textureLoader.load(url, resolve, undefined, reject);
+  });
+  photoTextures.push(photoTexture);
+  console.log("Loaded photo", id);
+};
+
 const spawnPhotos = () => {
-  while (scene.children.length < 1 || scene.children.every((child) => child.position.z > camera.position.z - minCameraDistance - visiblePhotosDistance)) {
+  while (
+    scene.children.length < 1 ||
+    scene.children.every(
+      (child) =>
+        child.position.z >
+        camera.position.z - minCameraDistance - visiblePhotosDistance,
+    )
+  ) {
     const photoId = getRandomPhotoId();
     spawnNewPhoto(photoId);
   }
 
   //Remove photos that are behind the camera
-  const photosToRemove = scene.children.filter((child) => child.position.z > camera.position.z);
+  const photosToRemove = scene.children.filter(
+    (child) => child.position.z > camera.position.z,
+  );
   photosToRemove.forEach((photo) => {
     scene.remove(photo);
-    currentlyVisibleIds = currentlyVisibleIds.filter((id) => id !== photo.userData.id);
+    currentlyVisibleIds = currentlyVisibleIds.filter(
+      (id) => id !== photo.userData.id,
+    );
   });
 };
 
 const getRandomPhotoId = () => {
   const photoIds = Array.from(
     { length: maxImageId - minImageId + 1 },
-    (_, i) => i + minImageId
+    (_, i) => i + minImageId,
   );
   // Remove currently visible ids
   const availableIds = photoIds.filter(
-    (id) => !currentlyVisibleIds.includes(id) && photoTextures[id - minImageId]
+    (id) => !currentlyVisibleIds.includes(id) && photoTextures[id - minImageId],
   );
 
   // Return a random id
@@ -103,8 +125,15 @@ const getGridBasedPosition = (gridIndex) => {
   const gridY = Math.floor(gridIndex / spawnGridWidth);
 
   // Calculate base position
-  const baseX = spawnMinX + (gridX * (spawnMaxX - spawnMinX)) / spawnGridWidth + spawnGridWidth / 2 - photoWidth;
-  const baseY = spawnMinY + (gridY * (spawnMaxY - spawnMinY)) / spawnGridHeight + spawnGridHeight / 2;
+  const baseX =
+    spawnMinX +
+    (gridX * (spawnMaxX - spawnMinX)) / spawnGridWidth +
+    spawnGridWidth / 2 -
+    photoWidth;
+  const baseY =
+    spawnMinY +
+    (gridY * (spawnMaxY - spawnMinY)) / spawnGridHeight +
+    spawnGridHeight / 2;
 
   // Add randomness
   const x = baseX + Math.random() * spawnRandomness;
@@ -116,7 +145,8 @@ const getGridBasedPosition = (gridIndex) => {
 const spawnNewPhoto = (id) => {
   const photoTexture = photoTextures[id - minImageId];
   const photoMaterial = new THREE.MeshBasicMaterial({ map: photoTexture });
-  const photoHeight = (photoTexture.image.height / photoTexture.image.width) * photoWidth;
+  const photoHeight =
+    (photoTexture.image.height / photoTexture.image.width) * photoWidth;
   const photoGeometry = new THREE.PlaneGeometry(photoWidth, photoHeight);
   const photoMesh = new THREE.Mesh(photoGeometry, photoMaterial);
 
@@ -125,8 +155,11 @@ const spawnNewPhoto = (id) => {
   const { x, y } = getGridBasedPosition(gridPosition);
 
   // Calculate the z position
-  const lowestPhotoZ= scene.children.reduce((lowestZ, child) => Math.min(lowestZ, child.position.z), 0);
-  
+  const lowestPhotoZ = scene.children.reduce(
+    (lowestZ, child) => Math.min(lowestZ, child.position.z),
+    0,
+  );
+
   const z = lowestPhotoZ - photoMarginZ;
 
   // Set the position
@@ -153,7 +186,7 @@ const animate = function () {
 
   // Spawn photos
   spawnPhotos();
-  
+
   // Move camera forward
   camera.position.z -= 0.01;
 
@@ -171,8 +204,7 @@ const main = async () => {
   }
 
   // Remove loading screen
-  document.getElementById("loading").
-    style.display = "none";
+  document.getElementById("loading").style.display = "none";
   animate();
 };
 
